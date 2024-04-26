@@ -54,6 +54,27 @@ Install-ADDSForest `
     -SafeModeAdministratorPassword (ConvertTo-SecureString "Benfica2024!" -AsPlainText -Force) `
     -Force `
 
+# Configure DNS service (with Google DNS and Cloudflare DNS as forwarders)
+
+Install-WindowsFeature -Name DNS -IncludeManagementTools
+Add-DnsServerPrimaryZone -Name "suntowater.site" -ZoneFile "suntowater.site.dns"
+Set-DnsServerForwarder -IPAddress 1.1.1.1, 8.8.8.8
+Add-DnsServerResourceRecordA -Name "www" -ZoneName "suntowater.site" -IPv4Address "192.168.1.100" -CreatePtr
+
+# Initial setup for Windows Server RADIUS (couldn't verify if it's working fully due to not having the same virtual environment as the project target)
+
+Install-WindowsFeature -Name NPAS -IncludeManagementTools
+New-NpsRadiusClient -Name "SunToWater" -Address "192.168.2.1" -SharedSecret "secretosdeporco"
+Set-NpsRadiusServerSettings -AccountingOnOff $true -NpsDnsDomain "suntowater.site"
+Set-NpsRadiusAuthentication -EapTls $true -EapTlsCipherSuite "TLS_RSA_WITH_AES_128_CBC_SHA256"
+Start-Service "IAS"
+
+# RADIUS check
+
+Get-NpsRadiusClient
+Get-NpsConnectionRequestPolicy
+Get-NpsNetworkPolicy
+
 # Create Organizational Units
 
 New-ADOrganizationalUnit -Name "CEO" -Path "DC=suntowater,DC=site"
